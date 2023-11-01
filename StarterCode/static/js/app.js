@@ -1,38 +1,26 @@
-// declare data variable outside the callback function
+// Declare data variable outside the callback function
 let data;
 
 // Define the extractDataForId function
 function extractDataForId(selectedId) {
-    const selectedData = data.samples.find(item => item.id === selectedId);
-    if (selectedData) {
-      return {
-        id: selectedData.id,
-        sample_values: selectedData.sample_values,
-        otu_ids: selectedData.otu_ids,
-        otu_labels: selectedData.otu_labels,
-      };
-    }
-    return null; // Handle the case when the selected ID is not found
+  const selectedData = data.samples.find(item => item.id === selectedId);
+  if (selectedData) {
+    return {
+      id: selectedData.id,
+      sample_values: selectedData.sample_values,
+      otu_ids: selectedData.otu_ids,
+      otu_labels: selectedData.otu_labels,
+    };
   }
-  
+  return null; // Handle the case when the selected ID is not found
+}
+
 // Step 1: Read the JSON data from the URL
 let url = "samples.json";
-d3.json(url).then(data => {
-  // Step 2: Extract the required data for the selected ID
-  function extractDataForId(selectedId) {
-    const selectedData = data.samples.find(item => item.id === selectedId);
-    if (selectedData) {
-      return {
-        id: selectedData.id,
-        sample_values: selectedData.sample_values,
-        otu_ids: selectedData.otu_ids,
-        otu_labels: selectedData.otu_labels,
-      };
-    }
-    return null; // Handle the case when the selected ID is not found
-  }
+d3.json(url).then(jsonData => {
+  data = jsonData; // Store the data globally
 
-  // Step 3: Create a function to update the bar chart
+  // Step 2: Create a function to update the bar chart
   function updateBarChart(selectedId) {
     const selectedData = extractDataForId(selectedId);
     if (selectedData) {
@@ -43,7 +31,6 @@ d3.json(url).then(data => {
       const otu_labels = selectedData.otu_labels;
 
       // Filter data for the selected ID
-      // Assuming "selectedId" contains the selected ID
       const filteredData = sample_values;
 
       // Sort the filtered data in descending order and select the top 10
@@ -63,7 +50,7 @@ d3.json(url).then(data => {
       };
 
       const layout = {
-        title: `Top 10 OTUs for Test Subject ${id}`,
+        title: `Top 10 OTUs for Test Subject ${selectedId}`,
         xaxis: { title: "Sample Values" },
       };
 
@@ -91,18 +78,15 @@ d3.json(url).then(data => {
 
   // Attach the event handler to the dropdown
   selectDropdown.on("change", optionChanged);
-
+  displayMetadata(data.names[0]);
   // Step 6: Initialize the bar chart with default data (e.g., the first ID)
   updateBarChart(data.names[0]);
 }).catch(error => {
   console.error("Error loading data:", error);
-});
 
-// Step 7: Create a bubble chart
-function updateBubbleChart(selectedId) {
-  // Get data for the selected ID
+
+// function updateBubbleChart(selectedId) {
   const selectedData = extractDataForId(selectedId);
-
   if (selectedData) {
     // Extract data for the selected ID
     const sampleValues = selectedData.sample_values;
@@ -110,27 +94,27 @@ function updateBubbleChart(selectedId) {
     const otuLabels = selectedData.otu_labels;
 
     // Set up the SVG container for the bubble chart
-    const svg = d3.select("#bubble");
-    const width = +svg.attr("width");
-    const height = +svg.attr("height");
+    const svg = d3.select("#bubble-chart");
+    const width = 800; // Set an appropriate width for your chart
+    const height = 400; // Set an appropriate height for your chart
 
     // Create scales for the bubble chart
     const xScale = d3.scaleLinear()
-      .domain([0, d3.max(sampleValues)]) // Modify the domain as needed
+      .domain([0, d3.max(otuIds)]) // Use otu_ids for scaling
       .range([0, width]);
 
     const yScale = d3.scaleLinear()
-      .domain([0, d3.max(sampleValues)]) // Modify the domain as needed
+      .domain([0, d3.max(sampleValues)]) // Use sample_values for scaling
       .range([height, 0]);
 
     const rScale = d3.scaleLinear()
-      .domain([0, d3.max(sampleValues)]) // Modify the domain as needed
+      .domain([0, d3.max(sampleValues)]) // Use sample_values for scaling
       .range([5, 50]); // Adjust the range based on your needs
 
     // Create a color scale for markers
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-    //remove previous circles
+    // Remove previous circles
     svg.selectAll("circle").remove();
     svg.selectAll("text").remove();
 
@@ -139,39 +123,30 @@ function updateBubbleChart(selectedId) {
       .data(sampleValues)
       .enter()
       .append("circle")
-      .attr("cx", d => xScale(d))
-      .attr("cy", (d, i) => yScale(sampleValues[i]))
+      .attr("cx", (d, i) => xScale(otuIds[i]))
+      .attr("cy", d => yScale(d))
       .attr("r", d => rScale(d))
       .attr("fill", (d, i) => colorScale(otuIds[i]))
-      .attr("opacity", 0.6); // You can adjust opacity as needed
+      .attr("opacity", 0.6);
 
     // Add labels for each circle
     svg.selectAll("text")
       .data(sampleValues)
       .enter()
       .append("text")
-      .attr("x", d => xScale(d))
-      .attr("y", (d, i) => yScale(sampleValues[i]))
+      .attr("x", (d, i) => xScale(otuIds[i]))
+      .attr("y", d => yScale(d))
       .text((d, i) => otuLabels[i])
-      .style("font-size", "10px") // Customize the font size
-      .style("fill", "black"); // Customize text color
+      .style("font-size", "10px")
+      .style("fill", "black");
   } else {
     console.log(`Data not found for ID: ${selectedId}`);
-  }
-}
+   }
+// }
+});
 
-// Step 8: Define an event handler for the dropdown
-function optionChanged(selectedId) {
-  // Display the metadata
-  displayMetadata(selectedId);
-
-  // Call the function to update the bar chart
-  updateBarChart(selectedId);
-}
-
-// Function to display metadata
+// Step 8: Define a function to display metadata
 function displayMetadata(selectedId) {
-  // Get metadata for the selected ID
   const metadata = data.metadata.find(item => item.id == selectedId);
 
   // Clear any existing metadata
@@ -190,7 +165,3 @@ function displayMetadata(selectedId) {
       .text("Metadata not found for this ID.");
   }
 }
-
-
-displayMetadata(data.names[0]);
-
